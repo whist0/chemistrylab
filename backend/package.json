@@ -6,7 +6,7 @@
   "description": "Backend для формы записи Chemistry Lab (курсовой проект)",
   "main": "src/server.js",
   "engines": {
-    "node": ">=22.5.0"
+    "node": ">=24"
   },
   "scripts": {
     "start": "node src/server.js",
