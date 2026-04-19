@@ -13,6 +13,9 @@ import { saveLead } from "./db.js";
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
+const host = "0.0.0.0";
+
+app.set("trust proxy", 1);
 
 const corsOrigin = process.env.CORS_ORIGIN;
 app.use(
@@ -98,11 +101,15 @@ app.get("/api/health", (_req, res) => {
     res.json({ ok: true, service: "chemistry-lab-api" });
 });
 
+app.get("/", (_req, res) => {
+    res.json({ ok: true, service: "chemistry-lab-api", hint: "POST /api/leads" });
+});
+
 app.use((_req, res) => {
     res.status(404).json({ ok: false, error: "Not found" });
 });
 
-const server = app.listen(port);
+const server = app.listen(port, host);
 
 server.on("error", (err) => {
     if (err.code === "EADDRINUSE") {
@@ -119,6 +126,6 @@ server.on("error", (err) => {
 });
 
 server.on("listening", () => {
-    console.log(`API слушает http://localhost:${port}`);
-    console.log(`Health: GET http://localhost:${port}/api/health`);
+    console.log(`API слушает http://${host}:${port} (Railway: наружу через $PORT)`);
+    console.log(`Health: GET /api/health`);
 });
