@@ -1,16 +1,9 @@
-/**
- * Запуск: cd backend && npm install && copy .env.example .env && npm run dev
- * Нужен Node.js 22.5+ (встроенный node:sqlite, без нативных модулей better-sqlite3).
- * Проверка: GET /api/health, заявки: POST /api/leads JSON { name, email, phone }
- * БД: backend/data/leads.sqlite. На проде задайте CORS_ORIGIN (например https://whist0.github.io)
- * или несколько через запятую. Переменные — в панели Railway.
- */
 import "dotenv/config";
 import cors from "cors";
 import express from "express";
 import rateLimit from "express-rate-limit";
 import { body, validationResult } from "express-validator";
-import { saveLead } from "./db.js";
+import { getLatestReviews, saveLead, saveReview } from "./db.js";
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
@@ -99,6 +92,26 @@ const leadValidators = [
         }),
 ];
 
+const reviewValidators = [
+    body("author")
+        .trim()
+        .notEmpty()
+        .withMessage("Укажите имя")
+        .isLength({ min: 2, max: 80 })
+        .withMessage("Имя должно быть от 2 до 80 символов"),
+    body("meta")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ max: 80 })
+        .withMessage("Поле класса/статуса слишком длинное"),
+    body("text")
+        .trim()
+        .notEmpty()
+        .withMessage("Введите текст отзыва")
+        .isLength({ min: 10, max: 500 })
+        .withMessage("Отзыв должен быть от 10 до 500 символов"),
+];
+
 app.post("/api/leads", leadValidators, (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -118,6 +131,41 @@ app.post("/api/leads", leadValidators, (req, res) => {
     } catch (err) {
         console.error(err);
         return res.status(500).json({ ok: false, error: "Не удалось сохранить заявку" });
+    }
+});
+
+app.post("/api/reviews", reviewValidators, (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({
+            ok: false,
+            errors: errors.array().map((e) => ({ field: e.path, msg: e.msg })),
+        });
+    }
+
+    const author = String(req.body.author).trim();
+    const meta = String(req.body.meta || "").trim() || "Ученик";
+    const text = String(req.body.text).trim();
+
+    try {
+        const { id } = saveReview({ author, meta, text });
+        return res.status(201).json({ ok: true, id: Number(id) });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ ok: false, error: "Не удалось сохранить отзыв" });
+    }
+});
+
+app.get("/api/reviews", (req, res) => {
+    const rawLimit = Number.parseInt(String(req.query.limit ?? "20"), 10);
+    const limit = Number.isFinite(rawLimit) ? rawLimit : 20;
+
+    try {
+        const items = getLatestReviews(limit);
+        return res.json({ ok: true, items });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ ok: false, error: "Не удалось получить отзывы" });
     }
 });
 

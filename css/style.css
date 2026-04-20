@@ -687,6 +687,27 @@ section {
     box-shadow: 0 0 0 3px rgba(78, 172, 142, 0.2);
 }
 
+.form textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--gray-200);
+    font-family: inherit;
+    resize: vertical;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form textarea:focus {
+    outline: none;
+    border-color: var(--mint-500);
+    box-shadow: 0 0 0 3px rgba(78, 172, 142, 0.2);
+}
+
+.reviews__form {
+    margin-top: 22px;
+}
+
 .contacts__grid {
     display: grid;
     grid-template-columns: 1fr 1fr 0.8fr;

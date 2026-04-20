@@ -391,6 +391,14 @@
         </div>
         <div class="slider-dots" id="sliderDots" aria-label="Навигация по отзывам"></div>
 
+        <form class="form reviews__form" id="reviewForm" novalidate>
+            <h3>Оставить отзыв</h3>
+            <input type="text" name="author" placeholder="Ваше имя" required autocomplete="name">
+            <input type="text" name="meta" placeholder="Класс / статус (например, 11 класс)" maxlength="80">
+            <textarea name="text" placeholder="Ваш отзыв" required minlength="10" maxlength="500"></textarea>
+            <button type="submit" class="btn">Отправить отзыв</button>
+        </form>
+
     </div>
 </section>
 

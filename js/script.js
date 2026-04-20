@@ -1,13 +1,18 @@
-// ====================== REVIEWS SLIDER ======================
-const reviews = document.querySelectorAll(".review");
+// ====================== СЛАЙДЕР ОТЗЫВОВ ======================
+function getReviews() {
+    return Array.from(document.querySelectorAll(".review"));
+}
+
 const reviewsTrack = document.querySelector(".reviews__track");
 const nextBtn = document.getElementById("next");
 const prevBtn = document.getElementById("prev");
 const sliderDotsContainer = document.getElementById("sliderDots");
+const reviewForm = document.getElementById("reviewForm");
 let currentIndex = 0;
 let autoSlideTimer = null;
 
 function showReview(index) {
+    const reviews = getReviews();
     if (!reviews.length || !reviewsTrack) return;
 
     reviewsTrack.style.transform = `translateX(-${index * 100}%)`;
@@ -22,6 +27,7 @@ function showReview(index) {
 }
 
 function createSliderDots() {
+    const reviews = getReviews();
     if (!sliderDotsContainer || !reviews.length) return;
 
     sliderDotsContainer.innerHTML = "";
@@ -40,12 +46,14 @@ function createSliderDots() {
 }
 
 function moveReview(step) {
+    const reviews = getReviews();
     if (!reviews.length) return;
     currentIndex = (currentIndex + step + reviews.length) % reviews.length;
     showReview(currentIndex);
 }
 
 function startAutoSlide() {
+    const reviews = getReviews();
     if (!reviews.length) return;
     autoSlideTimer = setInterval(() => moveReview(1), 5000);
 }
@@ -55,7 +63,7 @@ function resetAutoSlide() {
     startAutoSlide();
 }
 
-if (reviews.length && nextBtn && prevBtn && reviewsTrack) {
+if (getReviews().length && nextBtn && prevBtn && reviewsTrack) {
     createSliderDots();
     showReview(currentIndex);
     startAutoSlide();
@@ -70,6 +78,75 @@ if (reviews.length && nextBtn && prevBtn && reviewsTrack) {
         resetAutoSlide();
     });
 }
+
+function getApiBase() {
+    const base = typeof window.API_URL === "string" ? window.API_URL.replace(/\/$/, "") : "";
+    return base;
+}
+
+function buildAvatar(author) {
+    return (author || "А").trim().charAt(0).toUpperCase();
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+}
+
+function appendReviewCard({ author, meta, text }, prepend = false) {
+    if (!reviewsTrack) return;
+    const avatar = escapeHtml(buildAvatar(author));
+    const safeAuthor = escapeHtml(author);
+    const safeMeta = escapeHtml(meta || "");
+    const safeText = escapeHtml(text);
+    const review = document.createElement("div");
+    review.className = "review";
+    review.innerHTML = `
+        <div class="review__avatar"><span>${avatar}</span></div>
+        <p>"${safeText}"</p>
+        <span>${safeAuthor}${safeMeta ? `, ${safeMeta}` : ""}</span>
+    `;
+
+    if (prepend) {
+        reviewsTrack.prepend(review);
+    } else {
+        reviewsTrack.append(review);
+    }
+}
+
+async function loadSavedReviews() {
+    const base = getApiBase();
+    if (!base || !reviewsTrack) return;
+
+    try {
+        const res = await fetch(`${base}/api/reviews?limit=12`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !Array.isArray(data.items) || !data.items.length) return;
+
+        data.items
+            .slice()
+            .reverse()
+            .forEach((item) =>
+                appendReviewCard(
+                    { author: item.author, meta: item.meta, text: item.text },
+                    false
+                )
+            );
+
+        currentIndex = 0;
+        createSliderDots();
+        showReview(currentIndex);
+        resetAutoSlide();
+    } catch (err) {
+        console.error("Не удалось загрузить отзывы:", err);
+    }
+}
+
+loadSavedReviews();
 
 // ====================== TEACHERS DRAG SLIDER ======================
 const teachersSlider = document.querySelector(".teachers__grid");
@@ -135,6 +212,64 @@ function setFieldError(input, hasError) {
         input.style.borderColor = "#9fd2c2";
         input.style.boxShadow = "none";
     }
+}
+
+if (reviewForm) {
+    reviewForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const authorInput = reviewForm.querySelector('[name="author"]');
+        const metaInput = reviewForm.querySelector('[name="meta"]');
+        const textInput = reviewForm.querySelector('[name="text"]');
+        const author = authorInput?.value.trim() ?? "";
+        const meta = metaInput?.value.trim() ?? "";
+        const text = textInput?.value.trim() ?? "";
+
+        if (!author || text.length < 10) {
+            alert("Введите имя и отзыв не короче 10 символов.");
+            return;
+        }
+
+        const base = getApiBase();
+        if (!base) {
+            alert("Не задан window.API_URL — укажите адрес API в index.html.");
+            return;
+        }
+
+        const submitBtn = reviewForm.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+
+        try {
+            const res = await fetch(`${base}/api/reviews`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ author, meta, text }),
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                const msg =
+                    Array.isArray(data.errors) && data.errors.length
+                        ? data.errors.map((x) => x.msg).join("\n")
+                        : data.error || `Ошибка ${res.status}`;
+                alert(msg);
+                return;
+            }
+
+            appendReviewCard({ author, meta: meta || "Ученик", text }, true);
+            currentIndex = 0;
+            createSliderDots();
+            showReview(currentIndex);
+            resetAutoSlide();
+            reviewForm.reset();
+            alert("Спасибо! Отзыв сохранен.");
+        } catch (err) {
+            console.error(err);
+            alert("Не удалось отправить отзыв. Попробуйте позже.");
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
+        }
+    });
 }
 
 if (form) {
