@@ -191,8 +191,12 @@ if (form) {
             inputs.forEach((input) => setFieldError(input, false));
         } catch (err) {
             console.error(err);
+            const siteOrigin = typeof window.location?.origin === "string" ? window.location.origin : "";
             alert(
-                "Не удалось связаться с сервером. Запустите backend (npm run dev в папке backend) и проверьте window.API_URL."
+                `Не удалось отправить заявку на ${base}/api/leads.\n\n` +
+                    `Проверьте: 1) в index.html window.API_URL — HTTPS-адрес Railway; ` +
+                    `2) изменения запушены на GitHub (Pages обновился); ` +
+                    `3) в Railway CORS_ORIGIN = ${siteOrigin || "https://ВАШ-логин.github.io"} (только схема и хост, без пути к репозиторию).`
             );
         } finally {
             if (submitBtn) submitBtn.disabled = false;

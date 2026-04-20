@@ -2,7 +2,8 @@
  * Запуск: cd backend && npm install && copy .env.example .env && npm run dev
  * Нужен Node.js 22.5+ (встроенный node:sqlite, без нативных модулей better-sqlite3).
  * Проверка: GET /api/health, заявки: POST /api/leads JSON { name, email, phone }
- * БД: backend/data/leads.sqlite. На проде задайте CORS_ORIGIN и переменные в панели хостинга.
+ * БД: backend/data/leads.sqlite. На проде задайте CORS_ORIGIN (например https://whist0.github.io)
+ * или несколько через запятую. Переменные — в панели Railway.
  */
 import "dotenv/config";
 import cors from "cors";
@@ -17,10 +18,33 @@ const host = "0.0.0.0";
 
 app.set("trust proxy", 1);
 
-const corsOrigin = process.env.CORS_ORIGIN;
+/** Список origin через запятую; слэш в конце не важен (браузер шлёт Origin без пути). */
+function parseAllowedOrigins(raw) {
+    if (!raw || typeof raw !== "string") return null;
+    const list = raw
+        .split(",")
+        .map((s) => s.trim().replace(/\/+$/, ""))
+        .filter(Boolean);
+    return list.length ? list : null;
+}
+
+const allowedOrigins = parseAllowedOrigins(process.env.CORS_ORIGIN);
+
 app.use(
     cors({
-        origin: corsOrigin || true,
+        origin(origin, callback) {
+            if (!allowedOrigins) {
+                return callback(null, true);
+            }
+            if (!origin) {
+                return callback(null, true);
+            }
+            const norm = origin.replace(/\/+$/, "");
+            if (allowedOrigins.includes(norm)) {
+                return callback(null, true);
+            }
+            return callback(null, false);
+        },
         methods: ["GET", "POST", "OPTIONS"],
         allowedHeaders: ["Content-Type"],
     })
